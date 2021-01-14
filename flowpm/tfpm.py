@@ -78,7 +78,7 @@ def lpt1(dlin_k, pos, kvec=None, name="LTP1"):
     dlin_k = tf.convert_to_tensor(dlin_k, name="lineark")
     pos = tf.convert_to_tensor(pos, name="pos")
 
-    shape = dlin_k.get_shape()
+    shape = dlin_k.get_shape().as_list()
     batch_size, nc = shape[0], shape[1:]
     if kvec is None:
       kvec = fftk(nc, symmetric=False)
@@ -109,7 +109,7 @@ def lpt2_source(dlin_k, kvec=None, name="LPT2Source"):
   with tf.name_scope(name):
     dlin_k = tf.convert_to_tensor(dlin_k, name="lineark")
 
-    shape = dlin_k.get_shape()
+    shape = dlin_k.get_shape().as_list()
     batch_size, nc = shape[0], shape[1:]
     if kvec is None:
       kvec = fftk(nc, symmetric=False)
@@ -156,7 +156,7 @@ def lpt_init(linear, a, order=2, cosmology=cosmo, kvec=None, name="LPTInit"):
     linear = tf.convert_to_tensor(linear, name="linear")
 
     assert order in (1, 2)
-    shape = linear.get_shape()
+    shape = linear.get_shape().as_list()
     batch_size, nc = shape[0], shape[1:]
 
     dtype = np.float32
@@ -189,7 +189,7 @@ def apply_longrange(x, delta_k, split=0, factor=1, kvec=None, name="ApplyLongran
     x = tf.convert_to_tensor(x, name="pos")
     delta_k = tf.convert_to_tensor(delta_k, name="delta_k")
 
-    shape = delta_k.get_shape()
+    shape = delta_k.get_shape().as_list()
     nc = shape[1:]
 
     if kvec is None:
@@ -230,7 +230,9 @@ def kick(state, ai, ac, af, cosmology=cosmo, dtype=np.float32, name="Kick",
 
     fac = 1 / (ac ** 2 * E(cosmo,ac)) * (Gf(cosmo,af) - Gf(cosmo,ai)) / gf(cosmo,ac)
     indices = tf.constant([[1]])
-    update = tf.expand_dims(tf.multiply(dtype(fac), state[2]), axis=0)
+    #indices = tf.constant([1])
+    Xjl = tf.multiply(fac, state[2])
+    update = tf.expand_dims(Xjl, axis=0)
     shape = state.shape
     update = tf.scatter_nd(indices, update, shape)
     state = tf.add(state, update)
@@ -252,7 +254,7 @@ def drift(state, ai, ac, af, cosmology=cosmo, dtype=np.float32,
 
     fac = 1. / (ac ** 3 * E(cosmo,ac)) * (D1(cosmo,af) - D1(cosmo,ai)) / D1f(cosmo,ac)
     indices = tf.constant([[0]])
-    update = tf.expand_dims(tf.multiply(dtype(fac), state[1]), axis=0)
+    update = tf.expand_dims(tf.multiply(fac, state[1]), axis=0)
     shape = state.shape
     update = tf.scatter_nd(indices, update, shape)
     state = tf.add(state, update)
@@ -280,7 +282,7 @@ def force(state, nc, cosmology=cosmo, pm_nc_factor=1, kvec=None,
   with tf.name_scope(name):
     state = tf.convert_to_tensor(state, name="state")
 
-    shape = state.get_shape()
+    shape = state.get_shape().as_list()
     batch_size = shape[1]
     ncf = [n * pm_nc_factor for n in nc]
 
@@ -291,7 +293,7 @@ def force(state, nc, cosmology=cosmo, pm_nc_factor=1, kvec=None,
     rho = cic_paint(rho, tf.multiply(state[0], pm_nc_factor), wts)
     rho = tf.multiply(rho, 1./nbar)  ###I am not sure why this is not needed here
     delta_k = r2c3d(rho, norm=ncf[0]*ncf[1]*ncf[2])
-    fac = dtype(1.5 * cosmology['Omega0_m'])
+    fac = 1.5 * cosmology['Omega0_m']
     update = apply_longrange(tf.multiply(state[0], pm_nc_factor), delta_k, split=0, factor=fac)
 
     update = tf.expand_dims(update, axis=0)
@@ -330,7 +332,7 @@ def nbody(state, stages, nc, cosmology=cosmo, pm_nc_factor=1, name="NBody"):
   with tf.name_scope(name):
     state = tf.convert_to_tensor(state, name="state")
 
-    shape = state.get_shape()
+    shape = state.get_shape().as_list()
     if isinstance(nc, int):
       nc = [nc,nc,nc]
 
